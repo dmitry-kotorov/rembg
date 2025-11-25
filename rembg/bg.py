@@ -1,7 +1,8 @@
 import io
+import os
 import sys
 from enum import Enum
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import onnxruntime as ort
@@ -27,6 +28,7 @@ from .sessions.base import BaseSession
 ort.set_default_logger_severity(3)
 
 kernel = getStructuringElement(MORPH_ELLIPSE, (3, 3))
+_session_cache: Dict[str, BaseSession] = {}
 
 
 class ReturnType(Enum):
@@ -216,6 +218,23 @@ def download_models(models: tuple[str, ...]) -> None:
                 print(f"Error downloading model: {e}")
 
 
+def _is_cache_enabled(use_session_cache: Optional[bool]) -> bool:
+    env_disables_cache = os.environ.get("REMBG_DISABLE_SESSION_CACHE", "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+    if env_disables_cache:
+        return False
+
+    if use_session_cache is None:
+        return True
+
+    return use_session_cache
+
+
 def remove(
     data: Union[bytes, PILImage, np.ndarray],
     alpha_matting: bool = False,
@@ -269,12 +288,22 @@ def remove(
         )
 
     putalpha = kwargs.pop("putalpha", False)
+    use_session_cache = kwargs.pop("use_session_cache", None)
+    model_name = kwargs.pop("model_name", "u2net")
+    cache_sessions = _is_cache_enabled(use_session_cache)
 
     # Fix image orientation
     img = fix_image_orientation(img)
 
     if session is None:
-        session = new_session("u2net", *args, **kwargs)
+        if cache_sessions:
+            session = _session_cache.get(model_name)
+
+        if session is None:
+            session = new_session(model_name, *args, **kwargs)
+
+            if cache_sessions:
+                _session_cache[model_name] = session
 
     masks = session.predict(img, *args, **kwargs)
     cutouts = []
