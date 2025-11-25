@@ -225,11 +225,11 @@ def s_command(port: int, host: str, log_level: str, threads: int) -> None:
         except Exception:
             pass
 
-        if threads is not None:
-            from anyio import CapacityLimiter
-            from anyio.lowlevel import RunVar
+        from anyio import CapacityLimiter
+        from anyio.lowlevel import RunVar
 
-            RunVar("_default_thread_limiter").set(CapacityLimiter(threads))
+        worker_threads = threads or max(os.cpu_count() or 1, 1)
+        RunVar("_default_thread_limiter").set(CapacityLimiter(worker_threads))
 
     @app.get(
         path="/api/remove",
