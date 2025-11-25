@@ -35,7 +35,7 @@ output = remove(input, session=session)
 
 ### For processing multiple image files
 
-By default, `remove` initialises a new session every call. This can be a large bottleneck if you're having to process multiple images. Initialise a session and pass it in to the `remove` function for fast multi-image support
+`remove` now caches sessions by model name, so repeated calls reuse the same loaded model by default. You can still initialise and reuse an explicit session for more control.
 
 ```python
 model_name = "unet"
@@ -43,6 +43,8 @@ rembg_session = new_session(model_name)
 for img in images:
     output = remove(img, session=rembg_session)
 ```
+
+If you need isolation between calls, disable caching with the `use_session_cache=False` argument or by setting `REMBG_DISABLE_SESSION_CACHE=1` in your environment.
 
 ### With alpha matting
 
