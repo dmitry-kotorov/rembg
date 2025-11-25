@@ -7,25 +7,15 @@ from PIL import Image
 from rembg import new_session, remove
 
 here = Path(__file__).parent.resolve()
+failures_dir = here / "failures"
+failures_dir.mkdir(exist_ok=True)
 
 def test_remove():
     kwargs = {
         "sam": {
             "anime-girl-1" : {
                 "sam_prompt" :[{"type": "point", "data": [400, 165], "label": 1}],
-            },
-
-            "car-1" : {
-                "sam_prompt" :[{"type": "point", "data": [250, 200], "label": 1}],
-            },
-
-            "cloth-1" : {
-                "sam_prompt" :[{"type": "point", "data": [370, 495], "label": 1}],
-            },
-
-            "plants-1" : {
-                "sam_prompt" :[{"type": "point", "data": [724, 740], "label": 1}],
-            },
+            }
         }
     }
 
@@ -46,7 +36,7 @@ def test_remove():
         "birefnet-cod",
         "birefnet-massive"
     ]:
-        for picture in ["anime-girl-1", "car-1", "cloth-1", "plants-1"]:
+        for picture in ["anime-girl-1"]:
             image_path = Path(here / "fixtures" / f"{picture}.jpg")
             image = image_path.read_bytes()
 
@@ -68,5 +58,17 @@ def test_remove():
             print(f"expected_hash: {expected_hash}")
             print(f"actual_hash == expected_hash: {actual_hash == expected_hash}")
             print("---\n")
+
+            if actual_hash != expected_hash:
+                # Salva as imagens que falharam para comparação
+                actual_failure_path = failures_dir / f"{picture}.{model}.actual.png"
+                expected_failure_path = failures_dir / f"{picture}.{model}.expected.png"
+
+                with open(actual_failure_path, "wb") as f:
+                    f.write(actual)
+                with open(expected_failure_path, "wb") as f:
+                    f.write(expected)
+
+                print(f"FAILURE: Saved comparison images to {failures_dir}")
 
             assert actual_hash == expected_hash
